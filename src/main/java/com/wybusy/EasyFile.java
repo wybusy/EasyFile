@@ -1,6 +1,7 @@
 package com.wybusy;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFileAttributeView;
@@ -122,12 +123,15 @@ public class EasyFile {
      * @return String
      */
     public static String read(String path, String fileName) {
+        return read(path, fileName, "UTF-8");
+    }
+    public static String read(String path, String fileName, String charset) {
         String result = "";
         Path filePath = Paths.get(path, fileName);
         if (Files.exists(filePath)) {
             try {
                 byte[] bytes = Files.readAllBytes(filePath);
-                result = new String(bytes, StandardCharsets.UTF_8);
+                result = new String(bytes, Charset.forName(charset));
             } catch (IOException e) {
             }
         }
