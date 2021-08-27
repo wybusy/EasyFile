@@ -1,32 +1,12 @@
 package com.wybusy;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.*;
 
-/**
- * # EasyFile
- *
- * > 基于NIO文件管理工具集。
- *
- * ## spring boot使用
- *
- * ```java
- *  <dependency>
- *  <groupId>com.wybusy</groupId>
- *  <artifactId>EasyFile</artifactId>
- *  <version>1.0-SNAPSHOT</version>
- *  </dependency>
- *  ```
- *
- *  ## TODO
- *
- *  - 对ZIP文件的操作
- *
- */
 import static java.nio.file.attribute.PosixFilePermission.*;
 
 public class EasyFile {
@@ -114,17 +94,18 @@ public class EasyFile {
         return result;
     }
 
+    public static String read(String path, String fileName) {
+        return read(path, fileName, "UTF-8");
+    }
     /**
      * ##### - read
      * 读取文件内容
      *
      * @param path
      * @param fileName
+     * @param charset 编码方式，可选参数
      * @return String
      */
-    public static String read(String path, String fileName) {
-        return read(path, fileName, "UTF-8");
-    }
     public static String read(String path, String fileName, String charset) {
         String result = "";
         Path filePath = Paths.get(path, fileName);
@@ -138,6 +119,9 @@ public class EasyFile {
         return result;
     }
 
+    public static boolean save(String path, String fileName, Boolean append, String content) {
+        return save(path, fileName, append, content, "UTF-8");
+    }
     /**
      * ##### - write
      * 把内容写入文件，若在linux中，把属性改为666
@@ -146,12 +130,18 @@ public class EasyFile {
      * @param fileName
      * @param append 追加方式
      * @param content
+     * @param charset 编码方式，可选参数
      * @return boolean 成功与否
      */
-    public static boolean save(String path, String fileName, Boolean append, String content) {
+    public static boolean save(String path, String fileName, Boolean append, String content, String charset) {
         boolean result = true;
         Path filePath = Paths.get(path, fileName);
-        byte[] bytes = content.getBytes();
+        byte[] bytes = new byte[0];
+        try {
+            bytes = content.getBytes(charset);
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
         mkDir(path);
         try {
             if (append)

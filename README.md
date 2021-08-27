@@ -47,6 +47,7 @@
 
 > param path    
 > param fileName    
+> param charset 编码方式，可选参数            
 > return String
 
 ##### - write
@@ -56,6 +57,7 @@
 > param fileName    
 > param append 追加方式    
 > param content    
+> param charset 编码方式，可选参数            
 > return boolean 成功与否
 
 ##### - copy
