@@ -1,11 +1,14 @@
 package com.wybusy;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.FileSystem;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static java.nio.file.attribute.PosixFilePermission.*;
 
@@ -60,9 +63,9 @@ public class EasyFile {
      *
      * @param path
      * @param basePath
-     * @param filter "*.{jpg,png,gif}"
+     * @param filter    "*.{jpg,png,gif}"
      * @param recursion 是否递归
-     * @return List< Map >
+     * @return List<Map>
      */
     public static List<Map> dirTree(String path, String basePath, String filter, Boolean recursion) {
         if (filter == null || filter.trim().equals("")) filter = "*";
@@ -97,13 +100,14 @@ public class EasyFile {
     public static String read(String path, String fileName) {
         return read(path, fileName, "UTF-8");
     }
+
     /**
      * ##### - read
      * 读取文件内容
      *
      * @param path
      * @param fileName
-     * @param charset 编码方式，可选参数
+     * @param charset  编码方式，可选参数
      * @return String
      */
     public static String read(String path, String fileName, String charset) {
@@ -122,15 +126,16 @@ public class EasyFile {
     public static boolean save(String path, String fileName, Boolean append, String content) {
         return save(path, fileName, append, content, "UTF-8");
     }
+
     /**
      * ##### - write
      * 把内容写入文件，若在linux中，把属性改为666
      *
      * @param path
      * @param fileName
-     * @param append 追加方式
+     * @param append   追加方式
      * @param content
-     * @param charset 编码方式，可选参数
+     * @param charset  编码方式，可选参数
      * @return boolean 成功与否
      */
     public static boolean save(String path, String fileName, Boolean append, String content, String charset) {
@@ -149,9 +154,9 @@ public class EasyFile {
             else
                 Files.write(filePath, bytes, StandardOpenOption.CREATE);
             PosixFileAttributeView attr = Files.getFileAttributeView(filePath, PosixFileAttributeView.class);
-            if(attr != null) {// 如果是linux的话
+            if (attr != null) {// 如果是linux的话
                 attr.setPermissions(EnumSet.of(OWNER_READ, OWNER_WRITE,
-                        GROUP_READ,GROUP_WRITE,OTHERS_READ,OTHERS_WRITE));
+                        GROUP_READ, GROUP_WRITE, OTHERS_READ, OTHERS_WRITE));
             }
         } catch (IOException e) {
             result = false;
@@ -216,27 +221,103 @@ public class EasyFile {
     /**
      * ##### - del
      * 删除，若2参数为空，则删除和目录，但目录内有文件时，删除失败
+     *
      * @param path
      * @param fileName
      * @return boolean
      */
     public static boolean del(String path, String fileName) {
         boolean result = true;
-        if(fileName!=null) path += "/" + fileName;
+        if (fileName != null) path += "/" + fileName;
         Path filePath = Paths.get(path);
-            try {
-                result = Files.deleteIfExists(filePath);
-            } catch (IOException e) {
-                result = false;
+        try {
+            result = Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            result = false;
+        }
+        return result;
+    }
+
+    /**
+     * ##### - unzip
+     * 解压文件。内含中文文件名会出错
+     *
+     * @param zipFileName
+     * @param targetPath
+     */
+    public static void unzip(String zipFileName, String targetPath) throws Exception {
+        FileSystem fs = FileSystems.newFileSystem(Paths.get(zipFileName), null);
+        Files.walkFileTree(fs.getPath("/"), new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Path destPath = Paths.get(targetPath, file.toString());
+                Files.deleteIfExists(destPath);
+                Files.createDirectories(destPath.getParent());
+                Files.move(file, destPath);
+                return FileVisitResult.CONTINUE;
             }
-            return result;
+        });
+    }
+
+    /**
+     * ##### - zip
+     * 压缩文件。内含中文文件名不影响
+     *
+     * @param source 可以是文件或文件夹
+     * @param targetZipName
+     */
+
+    public static void zip(String source, String targetZipName) throws Exception {
+        //创建zip输出流
+        ZipOutputStream out = new ZipOutputStream(new FileOutputStream(targetZipName));
+        //创建缓冲输出流
+        BufferedOutputStream bos = new BufferedOutputStream(out);
+        File input = new File(source);
+        compress(out, bos, input, null);
+        bos.close();
+        out.close();
+    }
+
+    //递归压缩
+    private static void compress(ZipOutputStream out, BufferedOutputStream bos, File input, String name) throws IOException {
+        if (name == null) {
+            name = input.getName();
+        }
+        //如果路径为目录（文件夹）
+        if (input.isDirectory()) {
+            //取出文件夹中的文件（或子文件夹）
+            File[] flist = input.listFiles();
+
+            if (flist.length == 0)//如果文件夹为空，则只需在目的地zip文件中写入一个目录进入
+            {
+                out.putNextEntry(new ZipEntry(name + "/"));
+            } else//如果文件夹不为空，则递归调用compress，文件夹中的每一个文件（或文件夹）进行压缩
+            {
+                for (int i = 0; i < flist.length; i++) {
+                    compress(out, bos, flist[i], name + "/" + flist[i].getName());
+                }
+            }
+        } else//如果不是目录（文件夹），即为文件，则先写入目录进入点，之后将文件写入zip文件中
+        {
+            out.putNextEntry(new ZipEntry(name));
+            FileInputStream fos = new FileInputStream(input);
+            BufferedInputStream bis = new BufferedInputStream(fos);
+            int len = -1;
+            //将源文件写入到zip文件中
+            byte[] buf = new byte[1024];
+            while ((len = bis.read(buf)) != -1) {
+                bos.write(buf, 0, len);
+            }
+            bis.close();
+            fos.close();
+        }
     }
 }
-
 /**
  * 替换规则
  * ^ *
  * ^[^\*].*\n
  * \* ?/?
+ *
  * @(.*)\n -> > \1    \n
  */

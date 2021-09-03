@@ -8,13 +8,13 @@
 <dependency>
      <groupId>com.wybusy</groupId>
      <artifactId>EasyFile</artifactId>
-     <version>1.0.0</version>
+     <version>1.0.1</version>
 </dependency>
  ```
 
-## TODO
+## 新增
 
-- 对ZIP文件的操作
+- ZIP文件压缩解压
 
 
 ## 文件操作
@@ -84,4 +84,13 @@
 > param fileName    
 > return boolean    
 
+##### - unzip
+解压文件。内含中文文件名会出错
+> param zipFileName       
+> param targetPath           
+> return void
 
+##### - zip
+压缩文件。内含中文文件名不影响
+> param source 可以是文件或文件夹       
+> param targetZipName
